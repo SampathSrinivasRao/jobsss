@@ -1,0 +1,26 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BriefcaseBusiness, CheckCircle2, Clock3, FileText, MapPin, RefreshCw } from 'lucide-react';
+import { api } from '../../lib/api';
+import { Badge, Button, EmptyState, ErrorState, PageHeader, Spinner } from '../../components/ui';
+import { idOf } from '../../lib/utils';
+import { CompanyLogo } from './Jobs';
+const tones = { Applied: 'blue', Shortlisted: 'amber', Interviewing: 'green', Rejected: 'red', Hired: 'green' };
+const steps = ['Applied', 'Shortlisted', 'Interviewing', 'Hired'];
+export default function Applications() {
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('All');
+  const [retry, setRetry] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  useEffect(() => {
+    let active = true; let inFlight = false;
+    async function load() { if (inFlight || document.hidden) return; inFlight = true; try { const data = await api.get('/applications'); if (active) { setApplications(Array.isArray(data) ? data : data.applications || []); setError(''); setLastUpdated(new Date()); } } catch (err) { if (active) setError(err.message); } finally { inFlight = false; if (active) setLoading(false); } }
+    load(); const timer = setInterval(load, 15000); window.addEventListener('focus', load); document.addEventListener('visibilitychange', load); return () => { active = false; clearInterval(timer); window.removeEventListener('focus', load); document.removeEventListener('visibilitychange', load); };
+  }, [retry]);
+  const filtered = applications.filter((application) => filter === 'All' || application.status === filter);
+  const inProgress = applications.filter((application) => ['Shortlisted', 'Interviewing'].includes(application.status)).length;
+  return <div className="page-stack"><PageHeader eyebrow="EVERY STEP FORWARD COUNTS" title="Your next chapter, in progress." description="Keep an eye on your applications and hear when things move forward." actions={<Button variant="secondary" onClick={() => setRetry((value) => value + 1)}><RefreshCw size={17} />Refresh</Button>} /><div className="stats-grid"><Stat icon={FileText} label="Applications sent" value={applications.length} /><Stat icon={Clock3} label="In conversation" value={inProgress} /><Stat icon={CheckCircle2} label="Offers accepted / hired" value={applications.filter((application) => application.status === 'Hired').length} /></div><div className="application-toolbar"><div className="status-tabs" role="group" aria-label="Filter applications">{['All', 'Applied', 'Shortlisted', 'Interviewing', 'Hired', 'Rejected'].map((status) => <button key={status} className={filter === status ? 'selected' : ''} onClick={() => setFilter(status)}>{status}</button>)}</div><p className="muted text-xs">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · Refreshes every 15s` : 'Checking for updates…'}</p></div>{loading ? <Spinner /> : error ? <ErrorState message={error} onRetry={() => setRetry((value) => value + 1)} /> : !filtered.length ? <EmptyState icon={BriefcaseBusiness} title={applications.length ? 'Nothing in this stage yet.' : 'Your next move starts here.'} description={applications.length ? 'Updates from employers will appear here as your applications progress.' : 'Find a role that feels right and send your first application.'} action={<Link to="/" className="btn btn-primary">Explore opportunities</Link>} /> : <div className="page-stack">{filtered.map((application, index) => { const job = application.job; const currentStep = steps.indexOf(application.status); return <article className="card application-card" key={idOf(application)}><div className="application-card-header"><CompanyLogo company={job?.company} index={index} /><div className="flex-1 min-w-0"><p className="company-name">{job?.company?.name || 'Company'}</p><h3>{job ? <Link to={`/jobs/${idOf(job)}`}>{job.title}</Link> : 'This job is no longer available'}</h3><div className="job-meta mt-2"><span><MapPin size={14} />{job?.location || 'Location unavailable'}</span><span>Applied {new Date(application.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span></div></div><Badge tone={tones[application.status]}>{application.status}</Badge></div>{application.status === 'Rejected' ? <p className="application-feedback">The team has moved forward with other candidates. Your next opportunity is still out there.</p> : <ol className="application-steps" aria-label="Application progress">{steps.map((step, i) => <li key={step} className={i <= currentStep ? 'done' : ''}><span>{i < currentStep ? <CheckCircle2 size={16} /> : <span className="step-dot" />}</span>{step}</li>)}</ol>}{application.history?.length > 0 && <p className="field-hint mt-3">Last updated {new Date(application.updatedAt).toLocaleString()}</p>}</article>; })}</div>}</div>;
+}
+function Stat({ icon: Icon, label, value }) { return <div className="card stat-card"><div><span className="muted">{label}</span><strong>{value}</strong></div><span className="stat-icon"><Icon size={23} /></span></div>; }

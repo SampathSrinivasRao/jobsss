@@ -1,0 +1,27 @@
+{
+  "name": "hirelane",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A MERN job portal for candidates and hiring teams",
+  "workspaces": ["server", "client"],
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c green,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:demo": "node scripts/dev-demo.mjs",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "test": "npm run test -w server",
+    "test:e2e": "playwright test",
+    "seed": "npm run seed -w server",
+    "lint": "eslint client/src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.0",
+    "globals": "^17.0.0"
+  }
+}
